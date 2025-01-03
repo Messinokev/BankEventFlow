@@ -43,26 +43,6 @@ public class TransferSagaTests
             bus => bus.PublishAsync(It.Is<WithdrawMoneyCommand>(wc => wc.Amount == amount),
                 CancellationToken.None),
             Times.Once);
-    }
-
-    [Fact]
-    public async Task ApplyAsync_ShouldPublishDepositCommand_WhenWithdrawEventIsApplied()
-    {
-        // Arrange
-        var sagaId = new TransferSagaId(Guid.NewGuid().ToString());
-        var targetAccountId = AccountId.New;
-        var amount = 100m;
-    
-        var withdrawEvent = new WithdrawedMoneyEvent(amount);
-        var saga = new TransferSaga(sagaId, _commandBusMock.Object)
-        {
-            _targetAccountId = targetAccountId
-        };
-
-        // Act
-        saga.Apply(withdrawEvent);
-    
-        // Assert
         _commandBusMock.Verify(
             bus => bus.PublishAsync(It.Is<DepositMoneyCommand>(dc => dc.Amount == amount),
                 CancellationToken.None),

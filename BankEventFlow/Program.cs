@@ -1,3 +1,4 @@
+using BankEventFlow;
 using EventFlow.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -36,7 +37,11 @@ app.MapGet("/weatherforecast", () =>
     .WithName("GetWeatherForecast");
 
 var services = new ServiceCollection();
-services.AddEventFlow(ef => ef.AddDefaults(typeof(Program).Assembly));
+services.AddEventFlow(ef =>
+{
+    ef.AddDefaults(typeof(Program).Assembly);
+    ef.UseInMemoryReadStoreFor<AccountReadModel>();
+});
 using var serviceProvider = services.BuildServiceProvider();
 
 app.Run();

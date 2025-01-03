@@ -7,11 +7,9 @@ using EventFlow.ValueObjects;
 namespace BankEventFlow.Sagas;
 
 public class TransferSaga : AggregateSaga<TransferSaga, TransferSagaId, TransferSagaLocator>,
-    ISagaIsStartedBy<AccountAggregate, AccountId, TransferedMoneyEvent>,
-    IApply<WithdrawedMoneyEvent>
+    ISagaIsStartedBy<AccountAggregate, AccountId, TransferedMoneyEvent>
 {
     private readonly ICommandBus _commandBus;
-    public AccountId _targetAccountId;
 
     public TransferSaga(TransferSagaId id, ICommandBus commandBus) : base(id)
     {
@@ -21,24 +19,15 @@ public class TransferSaga : AggregateSaga<TransferSaga, TransferSagaId, Transfer
     public async Task HandleAsync(IDomainEvent<AccountAggregate, AccountId, TransferedMoneyEvent> domainEvent,
         ISagaContext sagaContext, CancellationToken cancellationToken)
     {
-        _targetAccountId = domainEvent.AggregateEvent.TargetAccountId;
-
         var withdrawalCommand =
             new WithdrawMoneyCommand(domainEvent.AggregateEvent.SourceAccountId, domainEvent.AggregateEvent.Amount);
-
-        // Send the withdrawal command
         await _commandBus.PublishAsync(withdrawalCommand, cancellationToken);
-    }
 
-    public void Apply(WithdrawedMoneyEvent withdrawedMoneyEvent)
-    {
-        var depositCommand = new DepositMoneyCommand(_targetAccountId, withdrawedMoneyEvent.Amount);
-
-        // Send the deposit command
-        Task.Run(async () =>
-        {
-            await _commandBus.PublishAsync(depositCommand, CancellationToken.None);
-        });
+        var depositCommand =
+            new DepositMoneyCommand(domainEvent.AggregateEvent.TargetAccountId, domainEvent.AggregateEvent.Amount);
+        await _commandBus.PublishAsync(depositCommand, cancellationToken);
+        
+        Complete();
     }
 }
 
