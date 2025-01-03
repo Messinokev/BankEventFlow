@@ -2,7 +2,7 @@ using FluentAssertions;
 
 namespace BankEventFlow;
 
-public class DepositEventTests
+public class DepositedMoneyEventTests
 {
     [Fact]
     public void DepositEvent_ShouldInitializeCorrectly()
@@ -11,7 +11,7 @@ public class DepositEventTests
         decimal depositAmount = 200;
 
         // Act
-        var depositEvent = new DepositEvent(depositAmount);
+        var depositEvent = new DepositedMoneyEvent(depositAmount);
 
         // Assert
         depositEvent.Amount.Should().Be(depositAmount);

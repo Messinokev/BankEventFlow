@@ -2,7 +2,7 @@ using FluentAssertions;
 
 namespace BankEventFlow;
 
-public class DepositCommandTests
+public class DepositMoneyCommandTests
 {
     [Fact]
     public void DepositCommand_ShouldInitializeCorrectly()
@@ -12,7 +12,7 @@ public class DepositCommandTests
         decimal depositAmount = 100;
 
         // Act
-        var command = new DepositCommand(accountId, depositAmount);
+        var command = new DepositMoneyCommand(accountId, depositAmount);
 
         // Assert
         command.AggregateId.Should().Be(accountId);

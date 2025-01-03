@@ -3,8 +3,8 @@ using EventFlow.Exceptions;
 
 namespace BankEventFlow;
 
-public class AccountAggregate : AggregateRoot<AccountAggregate, AccountId>, IEmit<DepositEvent>, IEmit<WithdrawEvent>,
-    IEmit<TransferEvent>
+public class AccountAggregate : AggregateRoot<AccountAggregate, AccountId>, IEmit<DepositedMoneyEvent>, IEmit<WithdrawedMoneyEvent>,
+    IEmit<TransferedMoneyEvent>
 {
     public decimal Balance { get; private set; }
 
@@ -12,17 +12,17 @@ public class AccountAggregate : AggregateRoot<AccountAggregate, AccountId>, IEmi
     {
     }
 
-    public void Apply(DepositEvent depositEvent)
+    public void Apply(DepositedMoneyEvent depositedMoneyEvent)
     {
-        Balance += depositEvent.Amount;
+        Balance += depositedMoneyEvent.Amount;
     }
 
-    public void Apply(WithdrawEvent withdrawEvent)
+    public void Apply(WithdrawedMoneyEvent withdrawedMoneyEvent)
     {
-        Balance -= withdrawEvent.Amount;
+        Balance -= withdrawedMoneyEvent.Amount;
     }
 
-    public void Apply(TransferEvent aggregateEvent)
+    public void Apply(TransferedMoneyEvent aggregateEvent)
     {
     }
 
@@ -33,7 +33,7 @@ public class AccountAggregate : AggregateRoot<AccountAggregate, AccountId>, IEmi
             throw DomainError.With("Deposit amount cannot be negative");
         }
 
-        Emit(new DepositEvent(amount));
+        Emit(new DepositedMoneyEvent(amount));
         return Task.CompletedTask;
     }
 
@@ -49,7 +49,7 @@ public class AccountAggregate : AggregateRoot<AccountAggregate, AccountId>, IEmi
             throw DomainError.With("Balance needs to be more than withdraw amount");
         }
 
-        Emit(new WithdrawEvent(amount));
+        Emit(new WithdrawedMoneyEvent(amount));
         return Task.CompletedTask;
     }
 
@@ -60,7 +60,7 @@ public class AccountAggregate : AggregateRoot<AccountAggregate, AccountId>, IEmi
             throw DomainError.With("The two accounts cannot be the same");
         }
 
-        Emit(new TransferEvent(sourceAccountId, amount, targetAccountId));
+        Emit(new TransferedMoneyEvent(sourceAccountId, amount, targetAccountId));
         return Task.CompletedTask;
     }
 }

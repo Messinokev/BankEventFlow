@@ -23,9 +23,9 @@ public class TransferSagaTests
         var sourceAccountId = AccountId.New;
         var targetAccountId = AccountId.New;
         var amount = 100m;
-        var transferEvent = new TransferEvent(sourceAccountId, amount, targetAccountId);
+        var transferEvent = new TransferedMoneyEvent(sourceAccountId, amount, targetAccountId);
         
-        var domainEvent = new DomainEvent<AccountAggregate, AccountId, TransferEvent>(
+        var domainEvent = new DomainEvent<AccountAggregate, AccountId, TransferedMoneyEvent>(
             aggregateEvent: transferEvent,
             metadata: Mock.Of<IMetadata>(),
             timestamp: DateTimeOffset.Now,
@@ -40,7 +40,7 @@ public class TransferSagaTests
 
         // Assert
         _commandBusMock.Verify(
-            bus => bus.PublishAsync(It.Is<WithdrawCommand>(wc => wc.Amount == amount),
+            bus => bus.PublishAsync(It.Is<WithdrawMoneyCommand>(wc => wc.Amount == amount),
                 CancellationToken.None),
             Times.Once);
     }
@@ -53,7 +53,7 @@ public class TransferSagaTests
         var targetAccountId = AccountId.New;
         var amount = 100m;
     
-        var withdrawEvent = new WithdrawEvent(amount);
+        var withdrawEvent = new WithdrawedMoneyEvent(amount);
         var saga = new TransferSaga(sagaId, _commandBusMock.Object)
         {
             _targetAccountId = targetAccountId
@@ -64,7 +64,7 @@ public class TransferSagaTests
     
         // Assert
         _commandBusMock.Verify(
-            bus => bus.PublishAsync(It.Is<DepositCommand>(dc => dc.Amount == amount),
+            bus => bus.PublishAsync(It.Is<DepositMoneyCommand>(dc => dc.Amount == amount),
                 CancellationToken.None),
             Times.Once);
     }

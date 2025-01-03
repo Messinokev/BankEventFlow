@@ -19,8 +19,8 @@ public class AccountAggregateTests
 
         //Assert
         var uncommittedEvents = aggregate.UncommittedEvents;
-        uncommittedEvents.Should().ContainSingle(e => e.AggregateEvent is DepositEvent)
-            .Which.AggregateEvent.As<DepositEvent>().Amount.Should().Be(depositAmount);
+        uncommittedEvents.Should().ContainSingle(e => e.AggregateEvent is DepositedMoneyEvent)
+            .Which.AggregateEvent.As<DepositedMoneyEvent>().Amount.Should().Be(depositAmount);
         aggregate.Balance.Should().Be(depositAmount);
     }
 
@@ -48,7 +48,7 @@ public class AccountAggregateTests
 
         // Act
         decimal depositAmount = 150;
-        aggregate.Apply(new DepositEvent(depositAmount));
+        aggregate.Apply(new DepositedMoneyEvent(depositAmount));
 
         // Assert
         aggregate.Balance.Should().Be(depositAmount);
