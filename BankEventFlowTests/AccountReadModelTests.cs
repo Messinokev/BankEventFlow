@@ -11,17 +11,19 @@ public class AccountReadModelTests
 {
     private IServiceProvider _serviceProvider;
     private ICommandBus _commandBus;
-    private IReadModelStore<AccountReadModelProjection> _readModelStore;
+    private IReadModelStore<AccountReadModel> _readModelStore;
+
+    private const decimal InitialDepositAmount = 100m;
+    private const decimal TransferAmount = 50m;
 
     public AccountReadModelTests()
     {
         var serviceCollection = new ServiceCollection();
-
         serviceCollection
             .AddLogging(configure => configure.AddConsole())
             .AddEventFlow(ef =>
             {
-                ef.UseInMemoryReadStoreFor<AccountReadModelProjection>();
+                ef.UseInMemoryReadStoreFor<AccountReadModel>();
                 ef.AddCommands(typeof(DepositMoneyCommand), typeof(WithdrawMoneyCommand), typeof(TransferMoneyCommand));
                 ef.AddEvents(typeof(DepositedMoneyEvent), typeof(WithdrawedMoneyEvent), typeof(TransferedMoneyEvent));
                 ef.AddCommandHandlers(typeof(DepositMoneyCommandHandler), typeof(WithdrawMoneyCommandHandler),
@@ -33,7 +35,30 @@ public class AccountReadModelTests
 
         _serviceProvider = serviceCollection.BuildServiceProvider();
         _commandBus = _serviceProvider.GetRequiredService<ICommandBus>();
-        _readModelStore = _serviceProvider.GetRequiredService<IReadModelStore<AccountReadModelProjection>>();
+        _readModelStore = _serviceProvider.GetRequiredService<IReadModelStore<AccountReadModel>>();
+    }
+
+    private async Task<AccountReadModel> GetReadModelAsync(AccountId accountId, CancellationToken cancellationToken)
+    {
+        var accountReadModel = await _readModelStore.GetAsync(accountId.Value, cancellationToken);
+        if (accountReadModel == null)
+        {
+            throw new InvalidOperationException($"Account read model for {accountId} not found.");
+        }
+
+        return accountReadModel.ReadModel;
+    }
+
+    private async Task DepositMoney(AccountId accountId, decimal amount)
+    {
+        var depositCommand = new DepositMoneyCommand(accountId, amount);
+        await _commandBus.PublishAsync(depositCommand, CancellationToken.None);
+    }
+
+    private async Task TransferMoney(AccountId sourceAccountId, AccountId targetAccountId, decimal amount)
+    {
+        var transferCommand = new TransferMoneyCommand(sourceAccountId, amount, targetAccountId);
+        await _commandBus.PublishAsync(transferCommand, CancellationToken.None);
     }
 
     [Fact]
@@ -42,26 +67,17 @@ public class AccountReadModelTests
         // Arrange
         var sourceAccountId = AccountId.New;
         var targetAccountId = AccountId.New;
-        var initialDepositAmount = 100;
 
         // Act
-
-        // Step 1: Deposit 100 into the source account
-        var depositToSourceAccount = new DepositMoneyCommand(sourceAccountId, initialDepositAmount);
-        await _commandBus.PublishAsync(depositToSourceAccount, CancellationToken.None);
-
-        // Step 2: Deposit 100 into the target account
-        var depositToTargetAccount = new DepositMoneyCommand(targetAccountId, initialDepositAmount);
-        await _commandBus.PublishAsync(depositToTargetAccount, CancellationToken.None);
+        await DepositMoney(sourceAccountId, InitialDepositAmount);
+        await DepositMoney(targetAccountId, InitialDepositAmount);
 
         // Assert
+        var sourceAccountReadModel = await GetReadModelAsync(sourceAccountId, CancellationToken.None);
+        var targetAccountReadModel = await GetReadModelAsync(targetAccountId, CancellationToken.None);
 
-        // Retrieve the updated read models
-        var sourceAccountReadModel = await _readModelStore.GetAsync(sourceAccountId.Value, CancellationToken.None);
-        var targetAccountReadModel = await _readModelStore.GetAsync(targetAccountId.Value, CancellationToken.None);
-
-        Assert.Equal(100, sourceAccountReadModel.ReadModel.GetBalance(sourceAccountId));
-        Assert.Equal(100, targetAccountReadModel.ReadModel.GetBalance(targetAccountId));
+        Assert.Equal(InitialDepositAmount, sourceAccountReadModel.Balance);
+        Assert.Equal(InitialDepositAmount, targetAccountReadModel.Balance);
     }
 
     [Fact]
@@ -70,32 +86,19 @@ public class AccountReadModelTests
         // Arrange
         var sourceAccountId = AccountId.New;
         var targetAccountId = AccountId.New;
-        var initialDepositAmount = 100;
-        var transferAmount = 50;
 
-        // Act
+        // Step 1: Deposit money into source and target accounts
+        await DepositMoney(sourceAccountId, InitialDepositAmount);
+        await DepositMoney(targetAccountId, InitialDepositAmount);
 
-        // Step 1: Deposit 100 into the source account
-        var depositToSourceAccount = new DepositMoneyCommand(sourceAccountId, initialDepositAmount);
-        await _commandBus.PublishAsync(depositToSourceAccount, CancellationToken.None);
+        // Step 2: Transfer money from source to target
+        await TransferMoney(sourceAccountId, targetAccountId, TransferAmount);
 
-        // Step 2: Deposit 100 into the target account
-        var depositToTargetAccount = new DepositMoneyCommand(targetAccountId, initialDepositAmount);
-        await _commandBus.PublishAsync(depositToTargetAccount, CancellationToken.None);
+        // Assert the balances
+        var sourceAccountReadModel = await GetReadModelAsync(sourceAccountId, CancellationToken.None);
+        var targetAccountReadModel = await GetReadModelAsync(targetAccountId, CancellationToken.None);
 
-        // Step 3: Transfer 50 from the source account to the target account
-        var transferCommand = new TransferMoneyCommand(sourceAccountId, transferAmount, targetAccountId);
-        await _commandBus.PublishAsync(transferCommand, CancellationToken.None);
-
-        // Assert
-
-        // Retrieve the updated read models
-        var sourceAccountReadModel = await _readModelStore.GetAsync(sourceAccountId.Value, CancellationToken.None);
-        var targetAccountReadModel = await _readModelStore.GetAsync(targetAccountId.Value, CancellationToken.None);
-
-        // After transfer, the source account should have 50 (100 - 50)
-        Assert.Equal(50, sourceAccountReadModel.ReadModel.GetBalance(sourceAccountId));
-        // The target account should have 150 (100 + 50)
-        Assert.Equal(150, targetAccountReadModel.ReadModel.GetBalance(targetAccountId));
+        Assert.Equal(InitialDepositAmount - TransferAmount, sourceAccountReadModel.Balance);
+        Assert.Equal(InitialDepositAmount + TransferAmount, targetAccountReadModel.Balance);
     }
 }

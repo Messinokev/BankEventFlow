@@ -1,4 +1,5 @@
 using BankEventFlow;
+using EventFlow.EventStores.Files;
 using EventFlow.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -37,8 +38,10 @@ app.MapGet("/weatherforecast", () =>
     .WithName("GetWeatherForecast");
 
 var services = new ServiceCollection();
+var storePath = "/Users/kevinpongo/Downloads/eventstore";
 services.AddEventFlow(ef =>
 {
+    ef.UseFilesEventPersistence(FilesEventStoreConfiguration.Create(storePath));
     ef.AddDefaults(typeof(Program).Assembly);
     ef.UseInMemoryReadStoreFor<AccountReadModel>();
 });
